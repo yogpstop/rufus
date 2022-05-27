@@ -24,6 +24,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bled", ".vs\bled.vcxproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext2fs", ".vs\ext2fs.vcxproj", "{B01F5886-2B39-4B66-B65C-6427135B6A02}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zstd", ".vs\zstd.vcxproj", "{63F3312A-A911-4742-A0A0-278EABBF8D00}"
+EndProject
 
 
 Global
@@ -214,6 +216,22 @@ Global
 		{B01F5886-2B39-4B66-B65C-6427135B6A02}.Release|x64.Build.0 = Release|x64
 		{B01F5886-2B39-4B66-B65C-6427135B6A02}.Release|x86.ActiveCfg = Release|Win32
 		{B01F5886-2B39-4B66-B65C-6427135B6A02}.Release|x86.Build.0 = Release|Win32
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|arm.ActiveCfg = Debug|ARM
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|arm.Build.0 = Debug|ARM
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|arm64.ActiveCfg = Debug|ARM64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|arm64.Build.0 = Debug|ARM64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|x64.ActiveCfg = Debug|x64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|x64.Build.0 = Debug|x64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|x86.ActiveCfg = Debug|Win32
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Debug|x86.Build.0 = Debug|Win32
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|arm.ActiveCfg = Release|ARM
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|arm.Build.0 = Release|ARM
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|arm64.ActiveCfg = Release|ARM64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|arm64.Build.0 = Release|ARM64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|x64.ActiveCfg = Release|x64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|x64.Build.0 = Release|x64
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|x86.ActiveCfg = Release|Win32
+		{63F3312A-A911-4742-A0A0-278EABBF8D00}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -35,49 +35,54 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\bled\bled.c" />
-    <ClCompile Include="..\src\bled\crc32.c" />
-    <ClCompile Include="..\src\bled\data_align.c" />
-    <ClCompile Include="..\src\bled\data_extract_all.c" />
-    <ClCompile Include="..\src\bled\data_skip.c" />
-    <ClCompile Include="..\src\bled\decompress_bunzip2.c" />
-    <ClCompile Include="..\src\bled\decompress_gunzip.c" />
-    <ClCompile Include="..\src\bled\decompress_uncompress.c" />
-    <ClCompile Include="..\src\bled\decompress_unlzma.c" />
-    <ClCompile Include="..\src\bled\decompress_unxz.c" />
-    <ClCompile Include="..\src\bled\decompress_unzip.c" />
-    <ClCompile Include="..\src\bled\decompress_vtsi.c" />
-    <ClCompile Include="..\src\bled\decompress_unzstd.c" />
-    <ClCompile Include="..\src\bled\filter_accept_all.c" />
-    <ClCompile Include="..\src\bled\filter_accept_list.c" />
-    <ClCompile Include="..\src\bled\filter_accept_reject_list.c" />
-    <ClCompile Include="..\src\bled\find_list_entry.c" />
-    <ClCompile Include="..\src\bled\header_list.c" />
-    <ClCompile Include="..\src\bled\header_skip.c" />
-    <ClCompile Include="..\src\bled\header_verbose_list.c" />
-    <ClCompile Include="..\src\bled\init_handle.c" />
-    <ClCompile Include="..\src\bled\open_transformer.c" />
-    <ClCompile Include="..\src\bled\seek_by_jump.c" />
-    <ClCompile Include="..\src\bled\seek_by_read.c" />
-    <ClCompile Include="..\src\bled\xz_dec_bcj.c" />
-    <ClCompile Include="..\src\bled\xz_dec_lzma2.c" />
-    <ClCompile Include="..\src\bled\xz_dec_stream.c" />
+    <ClCompile Include="..\src\zstd\common/debug.c" />
+    <ClCompile Include="..\src\zstd\common/entropy_common.c" />
+    <ClCompile Include="..\src\zstd\common/error_private.c" />
+    <ClCompile Include="..\src\zstd\common/fse_decompress.c" />
+    <ClCompile Include="..\src\zstd\common/pool.c" />
+    <ClCompile Include="..\src\zstd\common/threading.c" />
+    <ClCompile Include="..\src\zstd\common/xxhash.c" />
+    <ClCompile Include="..\src\zstd\common/zstd_common.c" />
+    <ClCompile Include="..\src\zstd\decompress/huf_decompress.c" />
+    <ClCompile Include="..\src\zstd\decompress/zstd_ddict.c" />
+    <ClCompile Include="..\src\zstd\decompress/zstd_decompress.c" />
+    <ClCompile Include="..\src\zstd\decompress/zstd_decompress_block.c" />
+    <ClCompile Include="..\src\zstd\legacy/zstd_v05.c" />
+    <ClCompile Include="..\src\zstd\legacy/zstd_v06.c" />
+    <ClCompile Include="..\src\zstd\legacy/zstd_v07.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\bled\bb_archive.h" />
-    <ClInclude Include="..\src\bled\bled.h" />
-    <ClInclude Include="..\src\bled\libbb.h" />
-    <ClInclude Include="..\src\bled\platform.h" />
-    <ClInclude Include="..\src\bled\xz.h" />
-    <ClInclude Include="..\src\bled\xz_config.h" />
-    <ClInclude Include="..\src\bled\xz_lzma2.h" />
-    <ClInclude Include="..\src\bled\xz_private.h" />
-    <ClInclude Include="..\src\bled\xz_stream.h" />
+    <ClInclude Include="..\src\zstd\zdict.h" />
+    <ClInclude Include="..\src\zstd\zstd.h" />
+    <ClInclude Include="..\src\zstd\zstd_errors.h" />
+    <ClInclude Include="..\src\zstd\common/bits.h" />
+    <ClInclude Include="..\src\zstd\common/bitstream.h" />
+    <ClInclude Include="..\src\zstd\common/compiler.h" />
+    <ClInclude Include="..\src\zstd\common/cpu.h" />
+    <ClInclude Include="..\src\zstd\common/debug.h" />
+    <ClInclude Include="..\src\zstd\common/error_private.h" />
+    <ClInclude Include="..\src\zstd\common/fse.h" />
+    <ClInclude Include="..\src\zstd\common/huf.h" />
+    <ClInclude Include="..\src\zstd\common/mem.h" />
+    <ClInclude Include="..\src\zstd\common/pool.h" />
+    <ClInclude Include="..\src\zstd\common/portability_macros.h" />
+    <ClInclude Include="..\src\zstd\common/threading.h" />
+    <ClInclude Include="..\src\zstd\common/xxhash.h" />
+    <ClInclude Include="..\src\zstd\common/zstd_deps.h" />
+    <ClInclude Include="..\src\zstd\common/zstd_internal.h" />
+    <ClInclude Include="..\src\zstd\common/zstd_trace.h" />
+    <ClInclude Include="..\src\zstd\decompress/zstd_ddict.h" />
+    <ClInclude Include="..\src\zstd\decompress/zstd_decompress_block.h" />
+    <ClInclude Include="..\src\zstd\decompress/zstd_decompress_internal.h" />
+    <ClInclude Include="..\src\zstd\legacy/zstd_legacy.h" />
+    <ClInclude Include="..\src\zstd\legacy/zstd_v05.h" />
+    <ClInclude Include="..\src\zstd\legacy/zstd_v06.h" />
+    <ClInclude Include="..\src\zstd\legacy/zstd_v07.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectName>bled</ProjectName>
-    <ProjectGuid>{FB6D52D4-A2F8-C358-DB85-BBCAECFDDD7D}</ProjectGuid>
-    <RootNamespace>bled</RootNamespace>
+    <ProjectName>zstd</ProjectName>
+    <ProjectGuid>{63F3312A-A911-4742-A0A0-278EABBF8D00}</ProjectGuid>
+    <RootNamespace>zstd</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -162,9 +167,9 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -181,9 +186,9 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -199,9 +204,9 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -218,9 +223,9 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -235,9 +240,9 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <StringPooling>true</StringPooling>
@@ -256,9 +261,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <StringPooling>true</StringPooling>
     </ClCompile>
@@ -276,9 +281,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <StringPooling>true</StringPooling>
     </ClCompile>
@@ -295,9 +300,9 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_OFF_T_DEFINED;_off_t=__int64;off_t=_off_t;_FILE_OFFSET_BITS=64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZSTD_DISABLE_ASM;ZSTD_LEGACY_SUPPORT=5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>..\src;..\src\zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <StringPooling>true</StringPooling>

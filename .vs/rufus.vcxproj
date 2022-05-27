@@ -485,6 +485,9 @@
     <ProjectReference Include="ext2fs.vcxproj">
       <Project>{b01f5886-2b39-4b66-b65c-6427135b6a02}</Project>
     </ProjectReference>
+    <ProjectReference Include=".\zstd.vcxproj">
+      <Project>{63f3312a-a911-4742-a0a0-278eabbf8d00}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
