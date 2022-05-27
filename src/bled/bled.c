@@ -48,6 +48,7 @@ unpacker_t unpacker[BLED_COMPRESSION_MAX] = {
 	unpack_xz_stream,
 	unpack_none,
 	unpack_vtsi_stream,
+	unpack_zst_stream,
 };
 
 /* Uncompress file 'src', compressed using 'type', to file 'dst' */

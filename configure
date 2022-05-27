@@ -4759,6 +4759,8 @@ ac_config_files="$ac_config_files src/syslinux/libinstaller/Makefile"
 
 ac_config_files="$ac_config_files src/syslinux/win/Makefile"
 
+ac_config_files="$ac_config_files src/zstd/Makefile"
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -5492,6 +5494,7 @@ do
     "src/syslinux/libfat/Makefile") CONFIG_FILES="$CONFIG_FILES src/syslinux/libfat/Makefile" ;;
     "src/syslinux/libinstaller/Makefile") CONFIG_FILES="$CONFIG_FILES src/syslinux/libinstaller/Makefile" ;;
     "src/syslinux/win/Makefile") CONFIG_FILES="$CONFIG_FILES src/syslinux/win/Makefile" ;;
+    "src/zstd/Makefile") CONFIG_FILES="$CONFIG_FILES src/zstd/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
