@@ -53,7 +53,7 @@ jobs:
           upx
 
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: recursive
@@ -88,7 +88,7 @@ jobs:
 
     - name: Upload artifacts
       if: ${{ matrix.env == 'i686' && github.event_name == 'push' }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: MinGW
         path: ./*.exe

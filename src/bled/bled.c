@@ -66,7 +66,6 @@ int64_t bled_uncompress(const char* src, const char* dst, int type)
 	init_transformer_state(&xstate);
 	xstate.src_fd = -1;
 	xstate.dst_fd = -1;
-	xstate.check_signature = 1;
 
 	xstate.src_fd = _openU(src, _O_RDONLY | _O_BINARY, 0);
 	if (xstate.src_fd < 0) {
@@ -114,7 +113,6 @@ int64_t bled_uncompress_with_handles(HANDLE hSrc, HANDLE hDst, int type)
 	init_transformer_state(&xstate);
 	xstate.src_fd = -1;
 	xstate.dst_fd = -1;
-	xstate.check_signature = 1;
 
 	xstate.src_fd = _open_osfhandle((intptr_t)hSrc, _O_RDONLY);
 	if (xstate.src_fd < 0) {
@@ -158,7 +156,6 @@ int64_t bled_uncompress_to_buffer(const char* src, char* buf, size_t size, int t
 	init_transformer_state(&xstate);
 	xstate.src_fd = -1;
 	xstate.dst_fd = -1;
-	xstate.check_signature = 1;
 
 	if (src[0] == 0) {
 		xstate.src_fd = bb_virtual_fd;
@@ -207,7 +204,6 @@ int64_t bled_uncompress_to_dir(const char* src, const char* dir, int type)
 	init_transformer_state(&xstate);
 	xstate.src_fd = -1;
 	xstate.dst_fd = -1;
-	xstate.check_signature = 1;
 
 	xstate.src_fd = _openU(src, _O_RDONLY | _O_BINARY, 0);
 	if (xstate.src_fd < 0) {
