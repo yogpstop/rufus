@@ -1,7 +1,7 @@
 /*
  * Rufus: The Reliable USB Formatting Utility
  * Windows User Experience
- * Copyright © 2022 Pete Batard <pete@akeo.ie>
+ * Copyright © 2022-2023 Pete Batard <pete@akeo.ie>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ const char* bypass_name[] = { "BypassTPMCheck", "BypassSecureBootCheck", "Bypass
 
 int unattend_xml_flags = 0, wintogo_index = -1, wininst_index = 0;
 int unattend_xml_mask = UNATTEND_DEFAULT_SELECTION_MASK;
-char* unattend_xml_path = NULL;
+char *unattend_xml_path = NULL, unattend_username[MAX_USERNAME_LENGTH];
 
 extern uint32_t wim_nb_files, wim_proc_files, wim_extra_files;
 
@@ -138,18 +138,19 @@ char* CreateUnattendXml(int arch, int flags)
 				fprintf(fd, "        <ProtectYourPC>3</ProtectYourPC>\n");
 				fprintf(fd, "      </OOBE>\n");
 			}
-			if (flags & UNATTEND_DUPLICATE_USER) {
-				order = 1;
-				char username[128] = { 0 };
-				DWORD size = sizeof(username);
-				if (GetUserNameU(username, &size) && username[0] != 0) {
+			if (flags & UNATTEND_SET_USER) {
+				if ((unattend_username[0] == 0) || (stricmp(unattend_username, "Administrator") == 0) ||
+					(stricmp(unattend_username, "Guest") == 0)) {
+					uprintf("WARNING: '%s' is not allowed as local account name - Option ignored", unattend_username);
+				} else {
+					uprintf("Will use '%s' for local account name", unattend_username);
 					// If we create a local account in unattend.xml, then we can get Windows 11
 					// 22H2 to skip MSA even if the network is connected during installation.
 					fprintf(fd, "      <UserAccounts>\n");
 					fprintf(fd, "        <LocalAccounts>\n");
 					fprintf(fd, "          <LocalAccount wcm:action=\"add\">\n");
-					fprintf(fd, "            <Name>%s</Name>\n", username);
-					fprintf(fd, "            <DisplayName>%s</DisplayName>\n", username);
+					fprintf(fd, "            <Name>%s</Name>\n", unattend_username);
+					fprintf(fd, "            <DisplayName>%s</DisplayName>\n", unattend_username);
 					fprintf(fd, "            <Group>Administrators;Power Users</Group>\n");
 					// Sets an empty password for the account (which, in Microsoft's convoluted ways,
 					// needs to be initialized to the Base64 encoded UTF-16 string "Password").
@@ -167,11 +168,9 @@ char* CreateUnattendXml(int arch, int flags)
 					fprintf(fd, "      <FirstLogonCommands>\n");
 					fprintf(fd, "        <SynchronousCommand wcm:action=\"add\">\n");
 					fprintf(fd, "          <Order>%d</Order>\n", order++);
-					fprintf(fd, "          <CommandLine>net user &quot;%s&quot; /logonpasswordchg:yes</CommandLine>\n", username);
+					fprintf(fd, "          <CommandLine>net user &quot;%s&quot; /logonpasswordchg:yes</CommandLine>\n", unattend_username);
 					fprintf(fd, "        </SynchronousCommand>\n");
 					fprintf(fd, "      </FirstLogonCommands>\n");
-				} else {
-					uprintf("Warning: Could not retreive current user name. Local Account was not created");
 				}
 			}
 			fprintf(fd, "    </component>\n");
@@ -191,6 +190,13 @@ char* CreateUnattendXml(int arch, int flags)
 			fprintf(fd, "      <UILanguageFallback>%s</UILanguageFallback>\n",
 				// NB: Officially, this is a REG_MULTI_SZ string
 				ReadRegistryKeyStr(REGKEY_HKLM, "SYSTEM\\CurrentControlSet\\Control\\Nls\\Language\\InstallLanguageFallback"));
+			fprintf(fd, "    </component>\n");
+		}
+		if (flags & UNATTEND_DISABLE_BITLOCKER) {
+			fprintf(fd, "    <component name=\"Microsoft-Windows-SecureStartup-FilterDriver\" processorArchitecture=\"%s\" language=\"neutral\" "
+				"xmlns:wcm=\"http://schemas.microsoft.com/WMIConfig/2002/State\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+				"publicKeyToken=\"31bf3856ad364e35\" versionScope=\"nonSxS\">\n", xml_arch_names[arch]);
+			fprintf(fd, "      <PreventDeviceEncryption>true</PreventDeviceEncryption>\n");
 			fprintf(fd, "    </component>\n");
 		}
 		fprintf(fd, "  </settings>\n");
@@ -353,6 +359,107 @@ out:
 }
 
 /// <summary>
+/// Populate the img_report Window version from an install[.wim|.esd] XML index
+/// </summary>
+/// <param name="xml_file">The path of the extracted index XML.</param>
+/// <param name="index">The index of the occurrence to look for.</param>
+static void PopulateWindowsVersionFromXml(const char* xml_file, int index)
+{
+	char* val;
+
+	val = get_token_data_file_indexed("MAJOR", xml_file, index);
+	img_report.win_version.major = (uint16_t)safe_atoi(val);
+	free(val);
+	val = get_token_data_file_indexed("MINOR", xml_file, index);
+	img_report.win_version.minor = (uint16_t)safe_atoi(val);
+	free(val);
+	val = get_token_data_file_indexed("BUILD", xml_file, index);
+	img_report.win_version.build = (uint16_t)safe_atoi(val);
+	free(val);
+	val = get_token_data_file_indexed("SPBUILD", xml_file, index);
+	img_report.win_version.revision = (uint16_t)safe_atoi(val);
+	free(val);
+	// Adjust versions so that we produce a more accurate report in the log
+	// (and yeah, I know we won't properly report Server, but I don't care)
+	if (img_report.win_version.major <= 5) {
+		// Don't want to support XP or earlier
+		img_report.win_version.major = 0;
+		img_report.win_version.minor = 0;
+	} else if (img_report.win_version.major == 6) {
+		// Don't want to support Vista
+		if (img_report.win_version.minor == 0) {
+			img_report.win_version.major = 0;
+		} else if (img_report.win_version.minor == 1) {
+			img_report.win_version.major = 7;
+			img_report.win_version.minor = 0;
+		} else if (img_report.win_version.minor == 2) {
+			img_report.win_version.major = 8;
+			img_report.win_version.minor = 0;
+		} else if (img_report.win_version.minor == 3) {
+			img_report.win_version.major = 8;
+			img_report.win_version.minor = 1;
+		} else if (img_report.win_version.minor == 4) {
+			img_report.win_version.major = 10;
+			img_report.win_version.minor = 0;
+		}
+	} else if (img_report.win_version.major == 10) {
+		if (img_report.win_version.build > 20000)
+			img_report.win_version.major = 11;
+	}
+}
+
+/// <summary>
+/// Populate the img_report Window version from an an install[.wim|.esd], mounting the
+/// ISO if needed. Requires Windows 8 or later.
+/// </summary>
+/// <param name="">(none)</param>
+/// <returns>TRUE on success, FALSE if we couldn't populate the version.</returns>
+BOOL PopulateWindowsVersion(void)
+{
+	char *mounted_iso, mounted_image_path[128];
+	char xml_file[MAX_PATH] = "";
+
+	memset(&img_report.win_version, 0, sizeof(img_report.win_version));
+
+	if ((nWindowsVersion < WINDOWS_8) || ((WimExtractCheck(TRUE) & 4) == 0))
+		return FALSE;
+
+	// If we're not using a straight install.wim, we need to mount the ISO to access it
+	if (!img_report.is_windows_img) {
+		mounted_iso = MountISO(image_path);
+		if (mounted_iso == NULL) {
+			uprintf("Could not mount Windows ISO for build number detection");
+			return FALSE;
+		}
+		static_sprintf(mounted_image_path, "%s%s", mounted_iso, &img_report.wininst_path[0][2]);
+	}
+
+	// Now take a look at the XML file in install.wim to list our versions
+	if ((GetTempFileNameU(temp_dir, APPLICATION_NAME, 0, xml_file) == 0) || (xml_file[0] == 0)) {
+		// Last ditch effort to get a tmp file - just extract it to the current directory
+		static_strcpy(xml_file, ".\\RufVXml.tmp");
+	}
+	// GetTempFileName() may leave a file behind
+	DeleteFileU(xml_file);
+
+	// Must use the Windows WIM API as 7z messes up the XML
+	if (!WimExtractFile_API(img_report.is_windows_img ? image_path : mounted_image_path,
+		0, "[1].xml", xml_file, TRUE)) {
+		uprintf("Could not acquire WIM index");
+		goto out;
+	}
+
+	PopulateWindowsVersionFromXml(xml_file, 1);
+
+out:
+	DeleteFileU(xml_file);
+	if (!img_report.is_windows_img)
+		UnMountISO();
+
+	return ((img_report.win_version.major != 0) && (img_report.win_version.build != 0));
+}
+
+/// <summary>
 /// Checks which versions of Windows are available in an install image
 /// to set our extraction index. Asks the user to select one if needed.
 /// </summary>
@@ -360,7 +467,7 @@ out:
 /// <returns>-2 on user cancel, -1 on other error, >=0 on success.</returns>
 int SetWinToGoIndex(void)
 {
-	char* mounted_iso, *val, mounted_image_path[128];
+	char* mounted_iso, mounted_image_path[128];
 	char xml_file[MAX_PATH] = "";
 	char* install_names[MAX_WININST];
 	StrArray version_name, version_index;
@@ -379,8 +486,7 @@ int SetWinToGoIndex(void)
 	if (img_report.wininst_index > 1) {
 		for (i = 0; i < img_report.wininst_index; i++)
 			install_names[i] = &img_report.wininst_path[i][2];
-		wininst_index = _log2(SelectionDialog(BS_AUTORADIOBUTTON, lmprintf(MSG_130),
-			lmprintf(MSG_131), install_names, img_report.wininst_index, 1));
+		wininst_index = _log2(SelectionDialog(lmprintf(MSG_130), lmprintf(MSG_131), install_names, img_report.wininst_index));
 		if (wininst_index < 0)
 			return -2;
 		if (wininst_index >= MAX_WININST)
@@ -392,7 +498,7 @@ int SetWinToGoIndex(void)
 		mounted_iso = MountISO(image_path);
 		if (mounted_iso == NULL) {
 			uprintf("Could not mount ISO for Windows To Go selection");
-			return FALSE;
+			return -1;
 		}
 		static_sprintf(mounted_image_path, "%s%s", mounted_iso, &img_report.wininst_path[wininst_index][2]);
 	}
@@ -435,8 +541,7 @@ int SetWinToGoIndex(void)
 
 	if (i > 1)
 		// NB: _log2 returns -2 if SelectionDialog() returns negative (user cancelled)
-		i = _log2(SelectionDialog(BS_AUTORADIOBUTTON,
-			lmprintf(MSG_291), lmprintf(MSG_292), version_name.String, i, 1)) + 1;
+		i = _log2(SelectionDialog(lmprintf(MSG_291), lmprintf(MSG_292), version_name.String, i)) + 1;
 	if (i < 0)
 		wintogo_index = -2;	// Cancelled by the user
 	else if (i == 0)
@@ -444,21 +549,8 @@ int SetWinToGoIndex(void)
 	else
 		wintogo_index = atoi(version_index.String[i - 1]);
 	if (i > 0) {
-		// Get the version data from the XML index
-		val = get_token_data_file_indexed("MAJOR", xml_file, i);
-		img_report.win_version.major = (uint16_t)safe_atoi(val);
-		free(val);
-		val = get_token_data_file_indexed("MINOR", xml_file, i);
-		img_report.win_version.minor = (uint16_t)safe_atoi(val);
-		free(val);
-		val = get_token_data_file_indexed("BUILD", xml_file, i);
-		img_report.win_version.build = (uint16_t)safe_atoi(val);
-		free(val);
-		val = get_token_data_file_indexed("SPBUILD", xml_file, i);
-		img_report.win_version.revision = (uint16_t)safe_atoi(val);
-		free(val);
-		if ((img_report.win_version.major == 10) && (img_report.win_version.build > 20000))
-			img_report.win_version.major = 11;
+		// re-populate the version data from the selected XML index
+		PopulateWindowsVersionFromXml(xml_file, i);
 		// If we couldn't obtain the major and build, we have a problem
 		if (img_report.win_version.major == 0 || img_report.win_version.build == 0)
 			uprintf("Warning: Could not obtain version information from XML index (Nonstandard Windows image?)");
@@ -669,7 +761,7 @@ BOOL ApplyWindowsCustomization(char drive_letter, int flags)
 		// We only need to mount boot.wim if we have windowsPE data to deal with. If
 		// not, we can just copy our unattend.xml in \sources\$OEM$\$$\Panther\.
 		if (flags & UNATTEND_WINPE_SETUP_MASK) {
-			uprintf("Mounting '%s'...", boot_wim_path);
+			uprintf("Mounting '%s[%d]'...", boot_wim_path, wim_index);
 			// Some "unofficial" ISOs have a modified boot.wim that doesn't have Windows Setup at index 2...
 			if (!WimIsValidIndex(boot_wim_path, wim_index)) {
 				uprintf("WARNING: This image appears to be an UNOFFICIAL Windows ISO!");
@@ -781,7 +873,7 @@ out:
 		UpdateProgressWithInfoForce(OP_PATCH, MSG_325, 104, PATCH_PROGRESS_TOTAL);
 	}
 	if (mount_path) {
-		uprintf("Unmounting '%s'...", boot_wim_path, wim_index);
+		uprintf("Unmounting '%s[%d]'...", boot_wim_path, wim_index);
 		WimUnmountImage(boot_wim_path, wim_index);
 		UpdateProgressWithInfo(OP_PATCH, MSG_325, PATCH_PROGRESS_TOTAL, PATCH_PROGRESS_TOTAL);
 	}

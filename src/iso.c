@@ -82,7 +82,6 @@ RUFUS_IMG_REPORT img_report;
 int64_t iso_blocking_status = -1;
 extern BOOL preserve_timestamps, enable_ntfs_compression;
 extern char* archive_path;
-extern const grub_patch_t grub_patch[2];
 BOOL enable_iso = TRUE, enable_joliet = TRUE, enable_rockridge = TRUE, has_ldlinux_c32;
 #define ISO_BLOCKING(x) do {x; iso_blocking_status++; } while(0)
 static const char* psz_extract_dir;
@@ -104,7 +103,6 @@ static const char* wininst_name[] = { "install.wim", "install.esd", "install.swm
 // If the disc was mastered properly, GRUB/EFI will take care of itself
 static const char* grub_dirname[] = { "/boot/grub/i386-pc", "/boot/grub2/i386-pc" };
 static const char* grub_cfg[] = { "grub.cfg", "loopback.cfg" };
-static const char* compatresources_dll = "compatresources.dll";
 static const char* menu_cfg = "menu.cfg";
 // NB: Do not alter the order of the array below without validating hardcoded indexes in check_iso_props
 static const char* syslinux_cfg[] = { "isolinux.cfg", "syslinux.cfg", "extlinux.conf", "txt.cfg" };
@@ -290,9 +288,6 @@ static BOOL check_iso_props(const char* psz_dirname, int64_t file_length, const 
 						}
 					}
 				}
-				// Check for "compatresources.dll" in "###/sources/"
-				if (safe_stricmp(psz_basename, compatresources_dll) == 0)
-					img_report.has_compatresources_dll = TRUE;
 			}
 		}
 
@@ -368,30 +363,30 @@ static void fix_config(const char* psz_fullpath, const char* psz_path, const cha
 	// Workaround for config files requiring an ISO label for kernel append that may be
 	// different from our USB label. Oh, and these labels must have spaces converted to \x20.
 	if ((props->is_cfg) || (props->is_conf)) {
+		// Older versions of GRUB EFI used "linuxefi", newer just use "linux".
+		// Also, in their great wisdom, the openSUSE maintainers added a 'set linux=linux'
+		// line to their grub.cfg, which means that their kernel option token is no longer
+		//'linux' but '$linux'... and we have to add a workaround for that.
+		// Finally, newer Arch and derivatives added an extra "search --label ..." command
+		// in their GRUB conf, which we need to cater for in supplement of the kernel line.
+		static const char* grub_token[] = { "linux", "linuxefi", "$linux", "search" };
 		iso_label = replace_char(img_report.label, ' ', "\\x20");
 		usb_label = replace_char(img_report.usb_label, ' ', "\\x20");
 		if ((iso_label != NULL) && (usb_label != NULL)) {
 			if (props->is_grub_cfg) {
-				// Older versions of GRUB EFI used "linuxefi", newer just use "linux"
-				if ((replace_in_token_data(src, "linux", iso_label, usb_label, TRUE) != NULL) ||
-					(replace_in_token_data(src, "linuxefi", iso_label, usb_label, TRUE) != NULL) ||
-					// In their great wisdom, the openSUSE maintainers added a 'set linux=linux'
-					// line to their grub.cfg, which means that their kernel option token is no
-					// longer 'linux' but '$linux'... and we have to add a workaround for that.
-					(replace_in_token_data(src, "$linux", iso_label, usb_label, TRUE) != NULL)) {
+				for (int i = 0; i < ARRAYSIZE(grub_token); i++)
+					if (replace_in_token_data(src, grub_token[i], iso_label, usb_label, TRUE) != NULL)
+						modified = TRUE;
+				if (modified)
 					uprintf("  Patched %s: '%s' ➔ '%s'\n", src, iso_label, usb_label);
-					modified = TRUE;
-				}
 			} else if (replace_in_token_data(src, (props->is_conf) ? "options" : "append",
 				iso_label, usb_label, TRUE) != NULL) {
 				uprintf("  Patched %s: '%s' ➔ '%s'\n", src, iso_label, usb_label);
 				modified = TRUE;
 			}
-			//
 			// Since version 8.2, and https://github.com/rhinstaller/anaconda/commit/a7661019546ec1d8b0935f9cb0f151015f2e1d95,
 			// Red Hat derivatives have changed their CD-ROM detection policy which leads to the installation source
 			// not being found. So we need to use 'inst.repo' instead of 'inst.stage2' in the kernel options.
-			//
 			if (img_report.rh8_derivative && (replace_in_token_data(src, props->is_grub_cfg ?
 				"linuxefi" : "append", "inst.stage2", "inst.repo", TRUE) != NULL)) {
 				uprintf("  Patched %s: '%s' ➔ '%s'\n", src, "inst.stage2", "inst.repo");
@@ -855,16 +850,18 @@ void GetGrubVersion(char* buf, size_t buf_size)
 	// not having it mention GNU anywhere. See:
 	// https://src.fedoraproject.org/rpms/grub2/blob/rawhide/f/0024-Don-t-say-GNU-Linux-in-generated-menus.patch
 	const char* grub_version_str[] = { "GRUB  version %s", "GRUB version %s" };
+	const char* grub_debug_is_enabled_str = "grub_debug_is_enabled";
 	char *p, unauthorized[] = {'<', '>', ':', '|', '*', '?', '\\', '/'};
 	size_t i, j;
+	BOOL has_grub_debug_is_enabled = FALSE;
 
 	for (i = 0; i < buf_size; i++) {
 		for (j = 0; j < ARRAYSIZE(grub_version_str); j++) {
-			if (memcmp(&buf[i], grub_version_str[j], strlen(grub_version_str[j]) + 1) == 0) {
+			if (memcmp(&buf[i], grub_version_str[j], strlen(grub_version_str[j]) + 1) == 0)
 				static_strcpy(img_report.grub2_version, &buf[i + strlen(grub_version_str[j]) + 1]);
-				break;
-			}
 		}
+		if (memcmp(&buf[i], grub_debug_is_enabled_str, strlen(grub_debug_is_enabled_str)) == 0)
+			has_grub_debug_is_enabled = TRUE;
 	}
 	// Sanitize the string
 	for (p = &img_report.grub2_version[0]; *p; p++) {
@@ -877,6 +874,35 @@ void GetGrubVersion(char* buf, size_t buf_size)
 	// But seriously, these guys should know better than "security" through obscurity...
 	if (img_report.grub2_version[0] == '0')
 		img_report.grub2_version[0] = 0;
+
+	// For some obscure reason, openSUSE have decided that their Live images should
+	// use /boot/grub2/ as their prefix directory instead of the standard /boot/grub/
+	// This creates a MAJOR issue because the prefix directory is hardcoded in
+	// 'core.img', and Rufus must install a 'core.img', that is not provided by the
+	// ISO, for the USB to boot (since even trying to pick the one from ISOHybrid
+	// does usually not guarantees the presence of the FAT driver which is mandatory
+	// for ISO boot).
+	// Therefore, when *someone* uses a nonstandard GRUB prefix directory, our base
+	// 'core.img' can't work with their image, since it isn't able to load modules
+	// like 'normal.mod', that are required to access the configuration files. Oh and
+	// you can forget about direct editing the prefix string inside 'core.img' since
+	// GRUB are forcing LZMA compression for BIOS payloads. And it gets even better,
+	// because even if you're trying to be smart and use GRUB's earlyconfig features
+	// to do something like:
+	//   if [ -e /boot/grub2/i386-pc/normal.mod ]; then set prefix = ...
+	// you still must embed 'configfile.mod' and 'normal.mod' in 'core.img' in order
+	// to do that, which ends up tripling the file size...
+	// Also, as mentioned above, Fedora have started applying *BREAKING* patches
+	// willy-nilly, without bothering to alter the GRUB version string.
+	// Soooo, since the universe is conspiring against us and since we already have
+	// a facility for it, we'll use it to dowload the relevant 'core.img' by
+	// appending a missing version suffix as needed...
+	if (img_report.grub2_version[0] != 0) {
+		if (has_grub_debug_is_enabled)
+			strcat(img_report.grub2_version, "-fedora");
+		if (img_report.has_grub2 > 1)
+			strcat(img_report.grub2_version, "-nonstandard");
+	}
 }
 
 BOOL ExtractISO(const char* src_iso, const char* dest_dir, BOOL scan)
@@ -1124,75 +1150,10 @@ out:
 				DeleteFileU(path);
 			}
 			if (img_report.grub2_version[0] != 0) {
-				// (Insert "Why is it always you three" meme, with Fedora, Manjaro and openSUSE)
-				// For some obscure reason, openSUSE have decided that their Live images should
-				// use /boot/grub2/ as their prefix directory instead of the standard /boot/grub/
-				// This creates a MAJOR issue because the prefix directory is hardcoded in
-				// 'core.img', and Rufus must install a 'core.img', that is not provided by the
-				// ISO, for the USB to boot (since even trying to pick the one from ISOHybrid
-				// does usually not guarantees the presence of the FAT driver which is mandatory
-				// for ISO boot).
-				// Therefore, when *someone* uses a nonstandard GRUB prefix directory, our base
-				// 'core.img' can't work with their image, since it isn't able to load modules
-				// like 'normal.mod', that are required to access the configuration files. Oh and
-				// you can forget about direct editing the prefix string inside 'core.img' since
-				// GRUB are forcing LZMA compression for BIOS payloads. And it gets even better,
-				// because even if you're trying to be smart and use GRUB's earlyconfig features
-				// to do something like:
-				//   if [ -e /boot/grub2/i386-pc/normal.mod ]; then set prefix = ...
-				// you still must embed 'configfile.mod' and 'normal.mod' in 'core.img' in order
-				// to do that, which ends up tripling the file size...
-				// Soooo, since the universe is conspiring against us and in order to cut a long
-				// story short about developers making annoying decisions, we'll take advantage
-				// of the fact that the LZMA replacement section for the 2.04 and 2.06 'core.img'
-				// when using '/boot/grub2' as a prefix is very small and always located at the
-				// very end the file to patch the damn thing and get on with our life!
-				uprintf("  Detected Grub version: %s%s", img_report.grub2_version,
-					img_report.has_grub2 > 1 ? " with NONSTANDARD prefix" : "");
-				if (img_report.has_grub2 > 1) {
-					for (k = 0; k < ARRAYSIZE(grub_patch); k++) {
-						if (strcmp(img_report.grub2_version, grub_patch[k].version) == 0)
-							break;
-					}
-					if (k >= ARRAYSIZE(grub_patch)) {
-						uprintf("  • Don't have a prefix patch for this version => DROPPED!");
-						img_report.has_grub2 = 0;
-					}
-				}
+				uprintf("  Detected Grub version: %s", img_report.grub2_version);
 			} else {
 				uprintf("  Could not detect Grub version");
 				img_report.has_grub2 = 0;
-			}
-		}
-		if (img_report.has_compatresources_dll) {
-			// So that we don't have to extract the XML index from boot/install.wim
-			// to find if we're dealing with Windows 11, we isolate the version from
-			// sources/compatresources.dll, which is much faster...
-			VS_FIXEDFILEINFO* ver_info = NULL;
-			DWORD ver_handle = 0, ver_size;
-			UINT value_len = 0;
-			// coverity[swapped_arguments]
-			if (GetTempFileNameU(temp_dir, APPLICATION_NAME, 0, path) != 0) {
-				// NB: Calling the GetFileVersion/VerQueryValue APIs create DLL sideloading issues.
-				// So make sure you delay-load 'version.dll' in your application if you use these.
-				size = (size_t)ExtractISOFile(src_iso, "sources/compatresources.dll", path, FILE_ATTRIBUTE_NORMAL);
-				ver_size = GetFileVersionInfoSizeU(path, &ver_handle);
-				if (ver_size != 0) {
-					buf = malloc(ver_size);
-					if ((buf != NULL) && GetFileVersionInfoU(path, ver_handle, ver_size, buf) &&
-						VerQueryValueA(buf, "\\", (LPVOID)&ver_info, &value_len) && (value_len != 0)) {
-						if (ver_info->dwSignature == VS_FFI_SIGNATURE) {
-							img_report.win_version.major = HIWORD(ver_info->dwFileVersionMS);
-							img_report.win_version.minor = LOWORD(ver_info->dwFileVersionMS);
-							img_report.win_version.build = HIWORD(ver_info->dwFileVersionLS);
-							img_report.win_version.revision = LOWORD(ver_info->dwFileVersionLS);
-							if ((img_report.win_version.major == 10) && (img_report.win_version.build > 20000))
-								img_report.win_version.major = 11;
-						}
-					}
-					free(buf);
-				}
-				DeleteFileU(path);
 			}
 		}
 		StrArrayDestroy(&config_path);

@@ -1,6 +1,6 @@
 /*
  * Rufus: The Reliable USB Formatting Utility
- * Copyright © 2011-2022 Pete Batard <pete@akeo.ie>
+ * Copyright © 2011-2023 Pete Batard <pete@akeo.ie>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,6 +78,7 @@
 #define MAX_ISO_TO_ESP_SIZE         512			// Maximum size we allow for the ISO → ESP option (in MB)
 #define MAX_DEFAULT_LIST_CARD_SIZE  200			// Size above which we don't list a card without enable HDD or Alt-F (in GB)
 #define MAX_SECTORS_TO_CLEAR        128			// nb sectors to zap when clearing the MBR/GPT (must be >34)
+#define MAX_USERNAME_LENGTH         128			// Maximum size we'll accept for a WUE specified username
 #define MAX_WININST                 4			// Max number of install[.wim|.esd] we can handle on an image
 #define MBR_UEFI_MARKER             0x49464555	// 'U', 'E', 'F', 'I', as a 32 bit little endian longword
 #define MORE_INFO_URL               0xFFFF
@@ -311,6 +312,12 @@ enum checksum_type {
 	CHECKSUM_MAX
 };
 
+enum file_io_type {
+	FILE_IO_READ = 0,
+	FILE_IO_WRITE,
+	FILE_IO_APPEND
+};
+
 /* Special handling for old .c32 files we need to replace */
 #define NB_OLD_C32          2
 #define OLD_C32_NAMES       { "menu.c32", "vesamenu.c32" }
@@ -398,7 +405,7 @@ typedef struct {
 	uint16_t sl_version;	// Syslinux/Isolinux version
 	char sl_version_str[12];
 	char sl_version_ext[32];
-	char grub2_version[32];
+	char grub2_version[64];
 } RUFUS_IMG_REPORT;
 
 /* Isolate the Syslinux version numbers */
@@ -459,7 +466,7 @@ typedef struct ext_t {
 	EXT_D(var, descriptions);                                               \
 	ext_t var = { ARRAYSIZE(_##var##_x), filename, _##var##_x, _##var##_d }
 
-/* Duplication of the TBPFLAG enum for Windows 7 taskbar progress */
+/* Duplication of the TBPFLAG enum for Windows taskbar progress */
 typedef enum TASKBAR_PROGRESS_FLAGS
 {
 	TASKBAR_NOPROGRESS = 0,
@@ -505,15 +512,16 @@ enum ArchType {
 #define UNATTEND_NO_DATA_COLLECTION         0x00008
 #define UNATTEND_OFFLINE_INTERNAL_DRIVES    0x00010
 #define UNATTEND_DUPLICATE_LOCALE           0x00020
-#define UNATTEND_DUPLICATE_USER             0x00040
-#define UNATTEND_DEFAULT_MASK               0x0007F
+#define UNATTEND_SET_USER                   0x00040
+#define UNATTEND_DISABLE_BITLOCKER          0x00080
+#define UNATTEND_DEFAULT_MASK               0x000FF
 #define UNATTEND_WINDOWS_TO_GO              0x10000		// Special flag for Windows To Go
 
 #define UNATTEND_WINPE_SETUP_MASK           (UNATTEND_SECUREBOOT_TPM_MINRAM)
 #define UNATTEND_SPECIALIZE_DEPLOYMENT_MASK (UNATTEND_NO_ONLINE_ACCOUNT)
-#define UNATTEND_OOBE_SHELL_SETUP_MASK      (UNATTEND_NO_DATA_COLLECTION | UNATTEND_DUPLICATE_USER)
+#define UNATTEND_OOBE_SHELL_SETUP_MASK      (UNATTEND_NO_DATA_COLLECTION | UNATTEND_SET_USER)
 #define UNATTEND_OOBE_INTERNATIONAL_MASK    (UNATTEND_DUPLICATE_LOCALE)
-#define UNATTEND_OOBE_MASK                  (UNATTEND_OOBE_SHELL_SETUP_MASK | UNATTEND_OOBE_INTERNATIONAL_MASK)
+#define UNATTEND_OOBE_MASK                  (UNATTEND_OOBE_SHELL_SETUP_MASK | UNATTEND_OOBE_INTERNATIONAL_MASK | UNATTEND_DISABLE_BITLOCKER)
 #define UNATTEND_OFFLINE_SERVICING_MASK     (UNATTEND_OFFLINE_INTERNAL_DRIVES)
 #define UNATTEND_DEFAULT_SELECTION_MASK     (UNATTEND_SECUREBOOT_TPM_MINRAM | UNATTEND_NO_ONLINE_ACCOUNT | UNATTEND_OFFLINE_INTERNAL_DRIVES)
 
@@ -583,7 +591,8 @@ extern BOOL CreateTooltip(HWND hControl, const char* message, int duration);
 extern void DestroyTooltip(HWND hWnd);
 extern void DestroyAllTooltips(void);
 extern BOOL Notification(int type, const char* dont_display_setting, const notification_info* more_info, char* title, char* format, ...);
-extern int SelectionDialog(int style, char* title, char* message, char** choices, int size, int mask);
+extern int CustomSelectionDialog(int style, char* title, char* message, char** choices, int size, int mask, int username_index);
+#define SelectionDialog(title, message, choices, size) CustomSelectionDialog(BS_AUTORADIOBUTTON, title, message, choices, size, 1, -1)
 extern void ListDialog(char* title, char* message, char** items, int size);
 extern SIZE GetTextSize(HWND hCtrl, char* txt);
 extern BOOL ExtractAppIcon(const char* filename, BOOL bSilent);
@@ -598,7 +607,7 @@ extern BOOL InstallSyslinux(DWORD drive_index, char drive_letter, int fs);
 extern uint16_t GetSyslinuxVersion(char* buf, size_t buf_size, char** ext);
 extern BOOL SetAutorun(const char* path);
 extern char* FileDialog(BOOL save, char* path, const ext_t* ext, DWORD options);
-extern BOOL FileIO(BOOL save, char* path, char** buffer, DWORD* size);
+extern BOOL FileIO(enum file_io_type io_type, char* path, char** buffer, DWORD* size);
 extern unsigned char* GetResource(HMODULE module, char* name, char* type, const char* desc, DWORD* len, BOOL duplicate);
 extern DWORD GetResourceSize(HMODULE module, char* name, char* type, const char* desc);
 extern DWORD RunCommand(const char* cmdline, const char* dir, BOOL log);
@@ -692,23 +701,6 @@ extern int32_t StrArrayFind(StrArray* arr, const char* str);
 extern void StrArrayClear(StrArray* arr);
 extern void StrArrayDestroy(StrArray* arr);
 #define IsStrArrayEmpty(arr) (arr.Index == 0)
-
-/* Patch structs for GRUB */
-typedef struct {
-	const uint32_t offset;
-	const uint32_t size;
-	const uint8_t data[];
-} chunk_t;
-
-typedef struct {
-	const chunk_t* src;
-	const chunk_t* rep;
-} patch_t;
-
-typedef struct {
-	const char* version;
-	const patch_t patch[2];
-} grub_patch_t;
 
 /*
  * typedefs for the function prototypes. Use the something like:

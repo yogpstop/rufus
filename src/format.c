@@ -1,7 +1,7 @@
 /*
  * Rufus: The Reliable USB Formatting Utility
  * Formatting function calls
- * Copyright © 2011-2022 Pete Batard <pete@akeo.ie>
+ * Copyright © 2011-2023 Pete Batard <pete@akeo.ie>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,7 +74,6 @@ extern uint32_t dur_mins, dur_secs;
 extern uint32_t wim_nb_files, wim_proc_files, wim_extra_files;
 extern BOOL force_large_fat32, enable_ntfs_compression, lock_drive, zero_drive, fast_zeroing, enable_file_indexing;
 extern BOOL write_as_image, use_vds, write_as_esp, is_vds_available;
-extern const grub_patch_t grub_patch[2];
 uint8_t *grub2_buf = NULL, *sec_buf = NULL;
 long grub2_len;
 
@@ -356,7 +355,7 @@ static BOOL FormatNativeVds(DWORD DriveIndex, uint64_t PartitionOffset, DWORD Cl
 	VolumeName = GetLogicalName(DriveIndex, PartitionOffset, TRUE, TRUE);
 	wVolumeName = utf8_to_wchar(VolumeName);
 	if (wVolumeName == NULL) {
-		uprintf("Could not read volume name (%s)", VolumeName);
+		uprintf("Could not read volume name");
 		FormatStatus = ERROR_SEVERITY_ERROR | FAC(FACILITY_STORAGE) | ERROR_GEN_FAILURE;
 		goto out;
 	}
@@ -911,8 +910,8 @@ static BOOL WriteSBR(HANDLE hPhysicalDrive)
 {
 	// TODO: Do we need anything special for 4K sectors?
 	DWORD size, max_size, br_size = 0x200;
-	int i, j, r, sub_type = boot_type;
-	uint8_t *buf = NULL, *patched = NULL;
+	int r, sub_type = boot_type;
+	uint8_t *buf = NULL;
 	FAKE_FD fake_fd = { 0 };
 	FILE* fp = (FILE*)&fake_fd;
 
@@ -953,32 +952,6 @@ static BOOL WriteSBR(HANDLE hPhysicalDrive)
 			if (buf == NULL) {
 				uprintf("Could not access core.img");
 				return FALSE;
-			}
-		}
-		// TODO: Compute the projected increase in size instead of harcoding it
-		if (img_report.has_grub2 == 2 && ((patched = malloc(size + 16)) != NULL)) {
-			memcpy(patched, buf, size);
-			// Patch GRUB for nonstandard prefix directory
-			for (i = 0; i < ARRAYSIZE(grub_patch); i++) {
-				if (strcmp(img_report.grub2_version, grub_patch[i].version) == 0) {
-					for (j = 0; j < ARRAYSIZE(grub_patch[i].patch); j++) {
-						if (memcmp(&patched[grub_patch[i].patch[j].src->offset], grub_patch[i].patch[j].src->data,
-							grub_patch[i].patch[j].src->size) != 0) {
-							uprintf("ERROR: Did not find expected source data for GRUB patch");
-							free(patched);
-							return FALSE;
-						}
-						memcpy(&patched[grub_patch[i].patch[j].rep->offset], grub_patch[i].patch[j].rep->data,
-							grub_patch[i].patch[j].rep->size);
-						if (grub_patch[i].patch[j].rep->size > grub_patch[i].patch[j].src->size)
-							size += grub_patch[i].patch[j].rep->size - grub_patch[i].patch[j].src->size;
-					}
-					safe_free(grub2_buf);
-					grub2_buf = patched;
-					buf = grub2_buf;
-					uprintf("Patched Grub 2.0 SBR for NONSTANDARD prefix");
-					break;
-				}
 			}
 		}
 		break;
@@ -1474,11 +1447,11 @@ DWORD WINAPI FormatThread(void* param)
 	// Find out if we need to add any extra partitions
 	if ((windows_to_go) && (target_type == TT_UEFI) && (partition_type == PARTITION_STYLE_GPT))
 		// According to Microsoft, every GPT disk (we RUN Windows from) must have an MSR due to not having hidden sectors
-		// http://msdn.microsoft.com/en-us/library/windows/hardware/dn640535.aspx#gpt_faq_what_disk_require_msr
+		// https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-and-gpt-faq#disks-that-require-an-msr
 		extra_partitions = XP_ESP | XP_MSR;
 	else if ( ((fs_type == FS_NTFS) || (fs_type == FS_EXFAT)) &&
 			  ((boot_type == BT_UEFI_NTFS) || ((boot_type == BT_IMAGE) && IS_EFI_BOOTABLE(img_report) &&
-			   ((target_type == TT_UEFI) || (windows_to_go) || (allow_dual_uefi_bios)))) )
+			   ((target_type == TT_UEFI) || (windows_to_go) || (allow_dual_uefi_bios) || (img_report.has_4GB_file)))) )
 		extra_partitions = XP_UEFI_NTFS;
 	else if ((boot_type == BT_IMAGE) && !write_as_image && HAS_PERSISTENCE(img_report) && persistence_size)
 		extra_partitions = XP_CASPER;
@@ -1748,6 +1721,8 @@ DWORD WINAPI FormatThread(void* param)
 		Flags |= FP_QUICK;
 	if ((fs_type == FS_NTFS) && (enable_ntfs_compression))
 		Flags |= FP_COMPRESSION;
+	if (write_as_esp)
+		Flags |= FP_LARGE_FAT32;
 
 	ret = FormatPartition(DriveIndex, partition_offset[PI_MAIN], ClusterSize, fs_type, label, Flags);
 	if (!ret) {
